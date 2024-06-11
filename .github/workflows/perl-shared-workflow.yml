@@ -2,7 +2,7 @@
 
 name: perl-shared-workflow
   
-on:  
+on:   
   workflow_dispatch:
     inputs: 
       OS: 
