@@ -24,6 +24,8 @@ jobs:
   build-perl-shared:
 
      runs-on: ubuntu-latest
+     env:
+      OS: ol8
      
      steps:
         - name: Check out Repo
