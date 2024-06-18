@@ -47,7 +47,7 @@ jobs:
           
         - name: Pretty-print BUILD_VARS_JSON
           run: |
-            echo '${{ github.event.inputs.BUILD_VARS_JSON }}' | jq .
+            echo "$BUILD_VARS_JSON" | jq .
             
         - name: Delete current repo from build
           id: modify_json
