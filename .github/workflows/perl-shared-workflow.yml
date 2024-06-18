@@ -33,17 +33,21 @@ jobs:
           
         - name: Pretty-print BUILD_VARS_JSON
           run: |
-            echo "$BUILD_VARS_JSON" | jq .
-            
+            echo '${{ github.event.inputs.BUILD_VARS_JSON }}' | jq .
         - name: Delete current repo from build
           id: modify_json
           run: |
             # Remove the first repo from the repos array
-            modified_json=$(echo "$BUILD_VARS_JSON" | jq 'del(.repos[0])')
+            modified_json=$(echo '${{ github.event.inputs.BUILD_VARS_JSON }}' | jq 'del(.repos[0])')
+            echo "Modified JSON:"
+            echo "$modified_json" | jq .
+          
+            # Convert the modified JSON back to a single-line string and export it as an environment variable
             BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
             echo "**** next next ****"
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
+
 
         - name: run docker oneshot builder
           run: |
