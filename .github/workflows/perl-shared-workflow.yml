@@ -88,12 +88,12 @@ jobs:
           run: |
             GITHUB_RUN_ID=${{ github.run_id }}
     
-            #modified_json=$(echo "$BUILD_VARS_JSON" | jq --arg run_id "$GITHUB_RUN_ID" '.buildids.${{ github.event.repository.name }} = $run_id')
+            modified_json=$(echo "$BUILD_VARS_JSON" | jq --arg run_id "$GITHUB_RUN_ID" '.buildids."${{ github.event.repository.name }}" = $run_id')
      
-            #echo "Modified JSON with GitHub run ID:"
-            #echo "$modified_json" | jq .
-            echo  "$BUILD_VARS_JSON" | jq -r '.buildids | .pscheduler'
-            #BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
+            echo "Modified JSON with GitHub run ID:"
+            echo "$modified_json" | jq .
+
+            BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
             
