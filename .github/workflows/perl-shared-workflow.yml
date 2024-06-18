@@ -37,7 +37,13 @@ jobs:
           run: |
             git clone https://github.com/cs1867/project.git project
             ls -al project
-            cp project/toolbox/workflows/test-data.json .   
+            cp project/toolbox/workflows/test-data.json .  
+        - name: Set build_vars.json as workflow variable
+          id: set_build_vars
+          run: |
+           BUILD_VARS_JSON=$(jq -c . test-data.json)
+           echo "BUILD_VARS_JSON=${BUILD_VARS_JSON}" >> $GITHUB_ENV
+           echo "BUILD_VARS_JSON=${BUILD_VARS_JSON}"   
           
         - name: Pretty-print BUILD_VARS_JSON
           run: |
