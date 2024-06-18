@@ -64,7 +64,7 @@ jobs:
 
         - name: run docker oneshot builder
           run: |
-           curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ github.event.inputs.OS }}'  
+           curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . ol8  
         - uses: actions/upload-artifact@v3
           with:
           #Name the artifact uniquely
