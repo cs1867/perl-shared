@@ -24,29 +24,12 @@ jobs:
   build-perl-shared:
 
      runs-on: ubuntu-latest
-     env:
-      OS: ol8
      
      steps:
         - name: Check out Repo
           uses: actions/checkout@v4
           with:
            ref: 5.1.0
-
-        - name: Fetch build_vars.json from projects
-          env:
-             github-token: ${{ secrets.GIT_ACTIONS }}
-          run: |
-            git clone https://github.com/cs1867/project.git project
-            ls -al project
-            cp project/toolbox/workflows/test-data.json .  
-            
-        - name: Set build_vars.json as workflow variable
-          id: set_build_vars
-          run: |
-           BUILD_VARS_JSON=$(jq -c . test-data.json)
-           echo "BUILD_VARS_JSON=${BUILD_VARS_JSON}" >> $GITHUB_ENV
-           echo "BUILD_VARS_JSON=${BUILD_VARS_JSON}"   
           
         - name: Pretty-print BUILD_VARS_JSON
           run: |
@@ -62,17 +45,16 @@ jobs:
             echo "**** next next ****"
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
 
-      #  - name: run docker oneshot builder
-      #    run: |
-      #     curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . ol8  
+        - name: run docker oneshot builder
+          run: |
+           curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ github.event.inputs.OS }}'  
+           
         - uses: actions/upload-artifact@v3
           with:
-          #Name the artifact uniquely
             name: ${{ github.event.repository.name }}-${{ github.event.inputs.OS }}
-            #Where the finished product lives after the build
             path: unibuild-repo
-            #Don't keep these for long.  This is just a test.
             retention-days: 5
+            
         - name: Look up the next repo name to build
           id: extract_repo_name
           run: |
@@ -98,18 +80,18 @@ jobs:
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
             
           
-    #    - name: Pass workflow  
-    ##      uses: actions/github-script@v6
-    #      with:
-    #$        github-token: ${{ secrets.GIT_ACTIONS }}
-    #        script: |
-    #          await github.rest.actions.createWorkflowDispatch({
-    #          owner: 'cs1867',
-    #          repo: '${{ env.NEXTREPO}}',
-    #          workflow_id: '${{ env.NEXTREPO}}-workflow.yml',
-    #          ref: 'github-workflow',
-    #           inputs: {
-    #            OS:  '${{ github.event.inputs.OS }}',
-    #            BUILD_VARS_JSON: '${{ env.BUILD_VARS_JSON}}'
-    #          }
-    #          })
+        - name: Pass workflow  
+          uses: actions/github-script@v6
+          with:
+            github-token: ${{ secrets.GIT_ACTIONS }}
+            script: |
+              await github.rest.actions.createWorkflowDispatch({
+              owner: 'cs1867',
+              repo: '${{ env.NEXTREPO}}',
+              workflow_id: '${{ env.NEXTREPO}}-workflow.yml',
+              ref: 'github-workflow',
+               inputs: {
+                OS:  '${{ github.event.inputs.OS }}',
+                BUILD_VARS_JSON: '${{ env.BUILD_VARS_JSON}}'
+              }
+              })
