@@ -90,7 +90,11 @@ jobs:
             BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
-
+            
+        - name: Capture end date and time
+          id: end_time
+          run: echo "end_time=$(date -u)" >> $GITHUB_ENV
+          
         - name: Add end time to build_vars.json
           run: |
             modified_json=$(echo "$BUILD_VARS_JSON" | jq '.buildstats += { "${{ github.event.repository.name }}-end": "${{ env.end_time }}" }' )
