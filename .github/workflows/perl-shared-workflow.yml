@@ -1,22 +1,18 @@
 name: perl-shared-workflow
 
 on:
+  push:
+    branches: [ 'github-workflow' ]
   workflow_dispatch:
     inputs:
+      BUILD_BRANCH:
+        description: 'Branch to build'
+        required: true
       OS:
         description: 'OS to build'
         required: true
-      MINORPACKAGEID:
-        description: 'Minor Package run id'
-        required: true
-      I2UTILID:
-        description: 'I2util build run id'
-        required: true
-      OWAMPID:
-        description: 'Owamp build run id'
-        required: true
-      PSCHEDULERID:
-        description: 'Pscheduler build run id'
+      BUILD_VARS_JSON:
+        description: 'Build var json file'
         required: true
   workflow_run:
     workflows: "Create Artifacts and pass runid"
@@ -31,42 +27,95 @@ jobs:
      runs-on: ubuntu-latest
 
      steps:
+
+        - name: Capture start date and time
+          id: start_time
+          run: echo "start_time=$(date -u)" >> $GITHUB_ENV
+
+        - name: Add start time to build_vars.json
+          run: |
+            modified_json=$(echo '${{ github.event.inputs.BUILD_VARS_JSON }}' | jq '.buildstats += { "${{ github.event.repository.name }}-start": "${{ env.start_time }}" }' )
+            BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
+            echo "**** next next ****"
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
+
         - name: Check out Repo
           uses: actions/checkout@v4
           with:
            ref: ${{ github.event.inputs.BUILD_BRANCH}}
 
-        - name: Create a temporary artifact downloads folder
-          run: mkdir aritfacts
+        - name: Pretty-print BUILD_VARS_JSON
+          run: |
+            echo "$BUILD_VARS_JSON" | jq .
+
+        - name: Delete current repo from build
+          id: modify_json
+          run: |
+            # Remove the first repo from the repos array
+            modified_json=$(echo "$BUILD_VARS_JSON" | jq 'del(.repos[0])')
+            echo "Modified JSON:"
+            echo "$modified_json" | jq .
+
+            BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
 
         - name: run docker oneshot builder
           run: |
            curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ github.event.inputs.OS }}'
+
         - uses: actions/upload-artifact@v3
           with:
-          #Name the artifact uniquely
             name: ${{ github.event.repository.name }}-${{ github.event.inputs.OS }}
-            #Where the finished product lives after the build
             path: unibuild-repo
-            #Don't keep these for long.  This is just a test.
             retention-days: 5
 
-        - name: Pass workflow to psconfig repo
+        - name: Look up the next repo name to build
+          id: extract_repo_name
+          run: |
+            echo "BUILD_VARS_JSON value is: $BUILD_VARS_JSON"
+            NEXTREPO=$(echo  "$BUILD_VARS_JSON" | jq -r '.repos[0].name' )
+            echo "NEXTREPO=$NEXTREPO" >> $GITHUB_ENV
+
+             - name: Display NEXTREPO value
+          run: echo "The value of NEXTREPO is $NEXTREPO"
+
+        - name: Add GitHub run ID to buildids
+          id: add_run_id
+          run: |
+            GITHUB_RUN_ID=${{ github.run_id }}
+            modified_json=$(echo "$BUILD_VARS_JSON" | jq --arg run_id "$GITHUB_RUN_ID" '.buildids."${{ github.event.repository.name }}" = $run_id')
+            echo "Modified JSON with GitHub run ID:"
+            echo "$modified_json" | jq .
+            BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
+
+        - name: Capture end date and time
+          id: end_time
+          run: echo "end_time=$(date -u)" >> $GITHUB_ENV
+
+        - name: Add end time to build_vars.json
+          run: |
+            modified_json=$(echo "$BUILD_VARS_JSON" | jq '.buildstats += { "${{ github.event.repository.name }}-end": "${{ env.end_time }}" }' )
+            BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
+
+        - name: Pass workflow
           uses: actions/github-script@v6
           with:
             github-token: ${{ secrets.GIT_ACTIONS }}
             script: |
               await github.rest.actions.createWorkflowDispatch({
               owner: 'cs1867',
-              repo: 'host-metrics',
-              workflow_id: 'host-metrics-workflow.yml',
+              repo: '${{ env.NEXTREPO}}',
+              workflow_id: '${{ env.NEXTREPO}}-workflow.yml',
               ref: 'github-workflow',
                inputs: {
                 OS:  '${{ github.event.inputs.OS }}',
-                MINORPACKAGEID:  '${{ github.event.inputs.MINORPACKAGEID }}',
-                I2UTILID: '${{ github.event.inputs.I2UTILID }}',
-                OWAMPID: '${{ github.event.inputs.OWAMPID }}',
-                PSCHEDULERID: '${{ github.event.inputs.PSCHEDULERID }}',
-                PERLSHAREDID: '${{ github.run_id }}'
+                BUILD_VARS_JSON: '${{ env.BUILD_VARS_JSON}}',
+                BUILD_BRANCH: '${{ github.event.inputs.BUILD_BRANCH }}'
               }
               })
