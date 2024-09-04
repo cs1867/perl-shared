@@ -34,7 +34,7 @@ jobs:
         - name: Check out Repo
           uses: actions/checkout@v4
           with:
-           ref: 5.2.0
+           ref: ${{ github.event.inputs.BUILD_BRANCH}}
 
         - name: Create a temporary artifact downloads folder
           run: mkdir aritfacts
