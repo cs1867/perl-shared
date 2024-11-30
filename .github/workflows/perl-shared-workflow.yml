@@ -61,10 +61,22 @@ jobs:
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
 
-        - name: run docker oneshot builder
-          run: |
-           curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ env.BUILD_OS }}'
+      #  - name: run docker oneshot builder
+      #    run: |
+      #     curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ env.BUILD_OS }}'
 
+
+        - name: Run Docker oneshot builder
+          run: |
+            case "${{ env.BUILD_OS }}" in
+              'ol8'|'el9')
+                curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - --run github-el-workflow.sh . '${{ env.BUILD_OS }}'
+                ;;
+              'd11'|'d12'|'u20'|'u24')
+                curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - --run github_u20_workflow.sh . '${{ env.BUILD_OS }}'
+                ;;
+            esac
+            
         - uses: actions/upload-artifact@v3
           with:
             name: ${{ github.event.repository.name }}-${{ env.BUILD_OS }}
