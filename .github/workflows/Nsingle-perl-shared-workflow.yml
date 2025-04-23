@@ -1,4 +1,4 @@
-name: single-perl-shared-workflow
+name: Nsingle-perl-shared-workflow
 
 on: 
   push: 
