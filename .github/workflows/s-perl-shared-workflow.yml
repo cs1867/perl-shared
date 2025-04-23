@@ -5,7 +5,7 @@ on:
     branches: 
       - github-workflow
 env:  
-  BUILD_OS: u22 
+  BUILD_OS: u20
 
 jobs:
   pscheduler-daemon:
@@ -38,8 +38,8 @@ jobs:
           mkdir -p artifacts
           mkdir -p artifacts/RPMS
           echo "Downloading artifact for pscheduler"
-          echo "Run ID: 14623819031"
-          gh run download 14623819031 --repo cs1867/pscheduler -D artifacts/pscheduler --name "pscheduler-${{ env.BUILD_OS }}"  
+          echo "Run ID: 14623811851"
+          gh run download 14623811851 --repo cs1867/pscheduler -D artifacts/pscheduler --name "pscheduler-${{ env.BUILD_OS }}"  
           artifact_path="artifacts/pscheduler"
           echo "copy to the artifacts RPM dir"
           cp "$artifact_path"/* artifacts/
