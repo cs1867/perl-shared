@@ -136,7 +136,8 @@ jobs:
           id: add_run_id
           run: |
             GITHUB_RUN_ID=${{ github.run_id }}
-            modified_json=$(echo "$BUILD_VARS_JSON"  | jq --arg run_id "$GITHUB_RUN_ID" '.buildids.${{ github.event.repository.name }} = $run_id')
+            repo_name="${{ github.event.repository.name }}"
+            modified_json=$(echo "$BUILD_VARS_JSON" | jq --arg run_id "$GITHUB_RUN_ID" --arg key "$repo_name" '.buildids[$key] = $run_id')
             echo "Modified JSON with GitHub run ID:"
             echo "$modified_json" | jq .
             BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
