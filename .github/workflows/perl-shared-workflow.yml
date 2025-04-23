@@ -1,8 +1,6 @@
 name: perl-shared-workflow
 
 on:
-  push:
-    branches: [ 'github-workflow' ]
   workflow_dispatch:
     inputs:
       BUILD_VARS_JSON:
