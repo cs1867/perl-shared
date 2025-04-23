@@ -10,7 +10,7 @@ on:
         required: true
   workflow_run:
     workflows: "Create Artifacts and pass runid"
-    branches: 'github-docker'
+    branches: 'github-workflow'
     types:
       - completed
 
@@ -43,9 +43,6 @@ jobs:
             echo "BUILD_OS=$BUILD_OS" >> $GITHUB_ENV 
             echo "BUILD_BRANCH=$BUILD_BRANCH" >> $GITHUB_ENV
             echo "BUILD_TYPE=$BUILD_TYPE" >> $GITHUB_ENV
-            echo "BUILD_OS=$BUILD_OS"
-            echo "BUILD_BRANCHN=$BUILD_BRANCH"
-            echo "BUILD_TYPE=$BUILD_TYPE"
             
         - name: Check out Repo
           uses: actions/checkout@v4
@@ -62,9 +59,62 @@ jobs:
                  cp project/toolbox/workflows/github-el-workflow.sh .
                  ;;
               'd11'|'d12'|'u20'|'u22'|'u24')
-                cp project/toolbox/workflows/github_u20_workflow.sh .
+                cp project/toolbox/workflows/github-db-workflow.sh .
                 ;;
             esac
+            
+        - name: Extract dependencies
+          id: extract_deps
+          run: |
+            echo "$BUILD_VARS_JSON" | jq -r '.repos[] | select(.name == "${{ github.event.repository.name }}") | .deps[]' > deps.txt
+            
+        - name: Set dependencies as outputs
+          id: set_deps
+          run: |
+            echo "cat deps.txt"
+            cat deps.txt
+
+        - name: Download artifacts
+          run: |
+            mkdir -p artifacts
+            while IFS= read -r repo; do
+              echo "Downloading artifact for $repo"
+              run_id=$(echo "$BUILD_VARS_JSON" | jq -r ".buildids | .[\"$repo\"]")
+              echo "rund id $run_id"
+              gh run download $run_id --repo cs1867/$repo -D artifacts/$repo --name "$repo-${{ env.BUILD_OS }}"  
+              artifact_path="artifacts/$repo"
+              echo "list artifact path"
+              ls -al "$artifact_path"
+              case "${{ env.BUILD_OS }}" in
+                'ol8'|'el9')
+                  mkdir -p artifacts/RPMS
+                  echo "copy to the artifacts RPM dir"
+                  cp "$artifact_path"/RPMS/*.rpm artifacts/RPMS
+                 ;;
+                'd11'|'d12'|'u20'|'u22'|'u24')                
+                  ls -al artifacts/*
+                  ;;
+              esac
+            done < deps.txt
+          env:
+            GITHUB_TOKEN: ${{ secrets.GIT_ACTIONS }}
+
+        - name: run docker oneshot builder and github-actions-workflow.sh
+          run: |
+              case "${{ env.BUILD_OS }}" in
+                'ol8'|'el9')              
+                   curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - --run github-el-workflow.sh . '${{ env.BUILD_OS }}'  
+                ;;
+                'd11'|'d12'|'u20'|'u22'|'u24')                
+                  curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - --run github-db-workflow.sh . '${{ env.BUILD_OS }}'
+                ;;
+              esac
+            
+        - uses: actions/upload-artifact@v4
+          with:
+            name: ${{ github.event.repository.name }}-${{ env.BUILD_OS }}
+            path: unibuild-repo
+            retention-days: 5
 
         - name: Delete current repo from build
           id: modify_json
@@ -75,48 +125,28 @@ jobs:
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
 
-        - name: Run Docker oneshot builder
-          run: |
-            case "${{ env.BUILD_OS }}" in
-              'ol8'|'el9')
-                curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - . '${{ env.BUILD_OS }}'
-                ;;
-              'd11'|'d12'|'u20'|'u22'|'u24')
-                curl -s https://raw.githubusercontent.com/perfsonar/docker-oneshot-builder/main/build | sh -s - --run github-ub-workflow-skip-install.sh . '${{ env.BUILD_OS }}'
-                ;;
-            esac
-            
-        - uses: actions/upload-artifact@v4
-          with:
-            name: ${{ github.event.repository.name }}-${{ env.BUILD_OS }}
-            path: unibuild-repo
-            retention-days: 5
-
         - name: Look up the next repo name to build
           id: extract_repo_name
           run: |
             echo "BUILD_VARS_JSON value is: $BUILD_VARS_JSON"
-            NEXTREPO=$(echo  "$BUILD_VARS_JSON" | jq -r '.repos[0].name' )
-            echo "NEXTREPO=$NEXTREPO" >> $GITHUB_ENV
-
-        - name: Display NEXTREPO value
-          run: echo "The value of NEXTREPO is $NEXTREPO"
-
+            NEXTREPO=$(echo  "$BUILD_VARS_JSON"  | jq -r '.repos[0].name' )
+            echo "NEXTREPO=$NEXTREPO" >> $GITHUB_ENV  
+            
         - name: Add GitHub run ID to buildids
           id: add_run_id
           run: |
             GITHUB_RUN_ID=${{ github.run_id }}
-            modified_json=$(echo "$BUILD_VARS_JSON" | jq --arg run_id "$GITHUB_RUN_ID" '.buildids."${{ github.event.repository.name }}" = $run_id')
+            modified_json=$(echo "$BUILD_VARS_JSON"  | jq --arg run_id "$GITHUB_RUN_ID" '.buildids.${{ github.event.repository.name }} = $run_id')
             echo "Modified JSON with GitHub run ID:"
             echo "$modified_json" | jq .
             BUILD_VARS_JSON=$(echo "$modified_json" | jq -c '.')
             echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" >> $GITHUB_ENV
-            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON"
-
+            echo "BUILD_VARS_JSON=$BUILD_VARS_JSON" 
+            
         - name: Capture end date and time
           id: end_time
           run: echo "end_time=$(date -u)" >> $GITHUB_ENV
-
+    
         - name: Add end time to build_vars.json
           run: |
             modified_json=$(echo "$BUILD_VARS_JSON" | jq '.buildstats += { "${{ github.event.repository.name }}-end": "${{ env.end_time }}" }' )
