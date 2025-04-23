@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p artifacts
           mkdir -p artifacts/RPMS
-          echo "Downloading artifact for owamp"
+          echo "Downloading artifact for pscheduler"
           echo "Run ID: 14623819031"
           gh run download 14623819031 --repo cs1867/pscheduler -D artifacts/pscheduler --name "pscheduler-${{ env.BUILD_OS }}"  
           artifact_path="artifacts/pscheduler"
