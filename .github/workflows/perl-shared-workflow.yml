@@ -19,9 +19,9 @@ jobs:
     with:
       BUILD_VARS_JSON: ${{ inputs.BUILD_VARS_JSON }}
 
-  oneshot-build:
+  oneshot-scripted-build:
     needs: prepare-build
-    uses: cs1867/project/.github/workflows/oneshot-script-build.yml@master
+    uses: cs1867/project/.github/workflows/oneshot-scripted-build.yml@master
     secrets:
       GIT_ACTIONS: ${{ secrets.GIT_ACTIONS }}
     with:
@@ -33,7 +33,7 @@ jobs:
   post-build:
     needs: 
       - prepare-build
-      - oneshot-build
+      - oneshot-scripted-build
     uses: cs1867/project/.github/workflows/post-build.yml@master
     secrets:
       GIT_ACTIONS: ${{ secrets.GIT_ACTIONS }}
@@ -42,3 +42,4 @@ jobs:
       BUILD_TYPE: ${{ needs.prepare-build.outputs.BUILD_TYPE }}
       BUILD_BRANCH: ${{ needs.prepare-build.outputs.BUILD_BRANCH }}
       BUILD_VARS_JSON: ${{ needs.prepare-build.outputs.BUILD_VARS_JSON }}
+ 
